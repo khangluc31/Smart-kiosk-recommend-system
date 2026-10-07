@@ -1,0 +1,67 @@
+Table users {
+    id text [pk]
+    num_buy int [not null, default: 0]
+    avg_spent int [not null, default: 0]
+    user_note text 
+}
+
+Table categories {
+    id int [pk, increment]
+    is_combo bool [not null]
+    name text [not null]
+}
+Table meals {
+    id int [pk, increment]
+    cat_id int [not null]
+    name text [not null]
+    num_sold int [not null, default: 0]
+    price numeric [not null]
+    available bool [default: true]
+    is_hotsell bool [default: false]
+    is_bestsell bool [default: false]
+    is_seasonal bool [default: false]
+}
+Table cart_items {
+  id int [pk, increment]
+  user_id text [not null]     
+  meal_id int [not null]  
+  quantity int [default: 1]  
+  indexes {
+    (user_id, meal_id) [unique]
+  }
+}
+Table history {
+    user_id text [not null]
+    meal_id int [not null]
+    times_order int [default: 1]
+    indexes {
+        (user_id, meal_id) [pk]
+    }
+}
+Table user_fav_cat {
+  user_id text [not null]
+  cat_id int [not null]
+  indexes {
+    (user_id, cat_id) [pk] 
+  }
+}
+Table user_fav_meal {
+  user_id text [not null]
+  meal_id int [not null]
+  indexes {
+    (user_id, meal_id) [pk] 
+  }
+}
+Ref: users.id < user_fav_meal.user_id
+Ref: meals.id < user_fav_meal.meal_id
+Ref: users.id < user_fav_cat.user_id
+Ref: categories.id < user_fav_cat.cat_id
+Ref: users.id < cart_items.user_id
+Ref: categories.id < meals.cat_id
+Ref: meals.id < cart_items.meal_id
+Ref: users.id < history.user_id
+Ref: meals.id < history.meal_id
+
+
+
+
