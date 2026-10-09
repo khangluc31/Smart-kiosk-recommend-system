@@ -43,8 +43,6 @@ for cat in sub_cat:
             )
             cat_id = cursor.fetchone()[0]
             break
-
-for cat in sub_cat:
     products=cat['products'] or []
     for product in products:
         items=product['items'] or []
@@ -53,12 +51,12 @@ for cat in sub_cat:
             is_combo=False
             is_bestsell=False
             is_seasonal=False
-            is_hotsell=Fale
+            is_hotsell=False
             for d in item.get('dname',[]):
                 if d.get('lang')=='vn':
                     name=d['value']
             price=item['price']
-            strikePrice=item['strikePrice']
+            strikePrice=item['strikePrice'] or 0
             type=item['categoryName']
             if type in ('Hot Deal', "Value Deals", 'New Product') or ( strikePrice >0  and strikePrice  > price):
                 is_seasonal=True
@@ -88,8 +86,82 @@ for cat in sub_cat:
             )
             meal_id = cursor.fetchone()[0]
             modgrps=item.get('modgrps') or []
+            for grp in modgrps:
+                grp_name=grp['name']
+                for d in grp.get('dname',[]):
+                    if d.get('lang')=='vn':
+                        grp_name=d['value'].strip()
+                min_choices=grp.get('min',1)
+                max_choices=grp.get('max',1)
 
+                cursor.execute(
+                    """
+                    INSERT INTO option_groups (meal_id, name, min_choices, max_choices)
+                    VALUES (%s, %s, %s, %s) RETURNING id
+                    """,
+                    (meal_id, grp_name, min_choices, max_choices)
+                )
+                group_id=cursor.fetchone()[0]
 
+                for mod in grp.get('modifiers') or []:
+                    mod_name=mod['name']
+                    for d in mod.get('dname',[]):
+                        if d.get('lang')=='vn':
+                            mod_name=d['value']
+                    item_name, quantity=parse_item(mod_name) 
+                    cursor.execute("SELECT id FROM items WHERE name=%s", (item_name,))
+                    row=cursor.fetchone()
+                    if row:
+                        item_id=row[0]
+                    else:
+                        cursor.execute("INSERT INTO items (name) VALUES (%s) RETURNING id", (item_name,))
+                        item_id=cursor.fetchone()[0]
+
+                    cursor.execute(
+                        """
+                        INSERT INTO meals_item (meal_id, item_id, quantity, group_id)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (meal_id, item_id, group_id) DO NOTHING
+                        """,
+                        (meal_id, item_id, quantity, group_id)
+                    )
+                    for sub_grp in mod.get('modgrps') or []:
+                        sub_name=sub_grp['name']
+                        for d in sub_grp.get('dname',[]):
+                            if d.get('lang')=='vn':
+                                sub_name=d['value'].strip()
+                        sub_name=item_name + ' - ' + sub_name     
+                        cursor.execute(
+                            """
+                            INSERT INTO option_groups (meal_id, name, min_choices, max_choices)
+                            VALUES (%s, %s, %s, %s) RETURNING id
+                            """,
+                            (meal_id, sub_name, sub_grp.get('min',1), sub_grp.get('max',1))
+                        )
+                        sub_group_id=cursor.fetchone()[0]
+
+                        for sub_mod in sub_grp.get('modifiers') or []:
+                            sub_item=sub_mod['name']
+                            for d in sub_mod.get('dname',[]):
+                                if d.get('lang')=='vn':
+                                    sub_item=d['value'].strip()   # "Gà Giòn Cay"
+
+                            cursor.execute("SELECT id FROM items WHERE name=%s", (sub_item,))
+                            row=cursor.fetchone()
+                            if row:
+                                sub_item_id=row[0]
+                            else:
+                                cursor.execute("INSERT INTO items (name) VALUES (%s) RETURNING id", (sub_item,))
+                                sub_item_id=cursor.fetchone()[0]
+
+                            cursor.execute(
+                                """
+                                INSERT INTO meals_item (meal_id, item_id, quantity, group_id)
+                                VALUES (%s, %s, %s, %s)
+                                ON CONFLICT (meal_id, item_id, group_id) DO NOTHING
+                                """,
+                                (meal_id, sub_item_id, 1, sub_group_id)
+                            )
 conn.commit()
 cursor.close()
 conn.close()
