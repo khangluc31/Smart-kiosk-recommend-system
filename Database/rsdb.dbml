@@ -7,7 +7,6 @@ Table users {
 
 Table categories {
     id int [pk, increment]
-    is_combo bool [not null]
     name text [not null]
 }
 Table meals {
@@ -20,6 +19,28 @@ Table meals {
     is_hotsell bool [default: false]
     is_bestsell bool [default: false]
     is_seasonal bool [default: false]
+    is_combo bool [default: false]
+}
+Table meals_item{
+    id int [pk, increment]
+    meal_id int [not null]
+    item_id int [not null]
+    quantity int [default : 1]
+    group_id int [null]
+    indexes {
+        (meal_id, item_id, group_id) [unique]
+    }
+}
+Table items{
+    id int [pk, increment]
+    name text [not null]
+}
+Table option_groups{
+    id int [pk, increment]
+    meal_id int [not null]
+    name text [not null]
+    min_choices int [default: 1]
+    max_choices int [default: 1]
 }
 Table cart_items {
   id int [pk, increment]
@@ -34,6 +55,7 @@ Table history {
     user_id text [not null]
     meal_id int [not null]
     times_order int [default: 1]
+    day_buy TIMESTAMP [not null]
     indexes {
         (user_id, meal_id) [pk]
     }
@@ -61,7 +83,10 @@ Ref: categories.id < meals.cat_id
 Ref: meals.id < cart_items.meal_id
 Ref: users.id < history.user_id
 Ref: meals.id < history.meal_id
-
+Ref: meals_item.meal_id > meals.id
+Ref: meals_item.item_id > items.id
+Ref: option_groups.meal_id > meals.id
+Ref: meals_item.group_id > option_groups.id
 
 
 

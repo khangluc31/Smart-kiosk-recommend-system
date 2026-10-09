@@ -1,0 +1,26 @@
+2026-10-08T11:27:18.375Z
+
+    rsdb.dbml(29,14): Invalid column type
+    rsdb.dbml(88,6): Table 'option_groups' does not exist in Schema 'public'
+    rsdb.dbml(91,28): Table 'option_groups' does not exist in Schema 'public'
+    rsdb.dbml(85,1): References with same endpoints exist
+    rsdb.dbml(81,1): References with same endpoints exist
+    rsdb.dbml(89,1): References with same endpoints exist
+    rsdb.dbml(86,1): References with same endpoints exist
+    rsdb.dbml(90,1): References with same endpoints exist
+    rsdb.dbml(87,1): References with same endpoints exist
+
+2026-10-09T03:53:45.692Z
+
+    rsdb.dbml(85,1): References with same endpoints exist
+    rsdb.dbml(81,1): References with same endpoints exist
+    rsdb.dbml(89,1): References with same endpoints exist
+    rsdb.dbml(86,1): References with same endpoints exist
+    rsdb.dbml(90,1): References with same endpoints exist
+    rsdb.dbml(87,1): References with same endpoints exist
+
+2026-10-09T03:56:26.722Z
+
+    rsdb.dbml(88,1): References with same endpoints exist
+    rsdb.dbml(85,1): References with same endpoints exist
+
