@@ -32,7 +32,7 @@ The system simulates the end-to-end customer journey at a self-service fast-food
 
 ## Important Notes & Limitations
 
-*   **Menu Dependency (October 2026):** Because we do not have access to a live, proprietary database, this project utilizes a static pull of the KFC Vietnam menu from October 2026. The system's mapping may break or behave unpredictably if the menu data structure changes in the future.
+*   **Menu Dependency (October 2026):** Due to limited access to KFC’s live proprietary database, this project utilizes a static menu dataset retrieved in October 2026. Consequently, the system’s recommendations reflect this point-in-time snapshot and may include items that are subject to seasonal changes or discontinuation.
 *   **Simulated Data:** The system currently relies on a list of dummy users for simulation. Because we lack access to real-world operational data (actual best sellers, hot sellers, real customer histories, and exact order volumes), the current recommendation accuracy will not perfectly reflect real-life consumer behavior. However, the architecture is designed so that if fed with high-quality, real-world data, the models will perform highly effectively.
 *   **Language & UI Constraints (Vietnamese Only):** In alignment with the original competition's target demographic, the menu items, intent recognition, and User Interface are entirely in Vietnamese. 
     *   Inputting English text/voice may result in failures or incorrect parsing. 
