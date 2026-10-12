@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 
-class context:
+class context_processing:
     def __init__(self):
         self.wanted=[]
         self.unwanted=[]
