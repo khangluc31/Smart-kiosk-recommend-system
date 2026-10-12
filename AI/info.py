@@ -81,7 +81,7 @@ async def greet_and_ask():
     await generate_audio(thank_you, "thank_you.mp3")
     answers = []
     for i, question in enumerate(kfc_dialog_list, start=1):
-        print(f"🤖 {question}")
+        print(f" {question}")
         play_audio(f"question_{i}.mp3")
         text = ""
         for attempt in range(2):                     
