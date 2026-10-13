@@ -1,8 +1,7 @@
 Table users {
-    id text [pk]
+    id uuid [pk, default: `gen_random_uuid()`]
     num_buy int [not null, default: 0]
     avg_spent int [not null, default: 0]
-    user_note text 
 }
 
 Table categories {
@@ -44,7 +43,7 @@ Table option_groups{
 }
 Table cart_items {
   id int [pk, increment]
-  user_id text [not null]     
+  user_id uuid [not null]     
   meal_id int [not null]  
   quantity int [default: 1]  
   indexes {
@@ -52,7 +51,7 @@ Table cart_items {
   }
 }
 Table history {
-    user_id text [not null]
+    user_id uuid [not null]
     meal_id int [not null]
     times_order int [default: 1]
     day_buy TIMESTAMP [not null]
@@ -61,14 +60,14 @@ Table history {
     }
 }
 Table user_fav_cat {
-  user_id text [not null]
+  user_id uuid [not null]
   cat_id int [not null]
   indexes {
     (user_id, cat_id) [pk] 
   }
 }
 Table user_fav_meal {
-  user_id text [not null]
+  user_id uuid [not null]
   meal_id int [not null]
   indexes {
     (user_id, meal_id) [pk] 
