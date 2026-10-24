@@ -1,91 +1,138 @@
-Table users {
-    id uuid [pk, default: `gen_random_uuid()`]
-    num_buy int [not null, default: 0]
-    avg_spent int [not null, default: 0]
+
+Project recsys_db {
+  database_type: 'PostgreSQL'
+  Note: 'Hệ thống gợi ý món KFC. Lưu SỰ KIỆN gốc (orders, order_items, rec_logs); số liệu tổng hợp là VIEW.'
 }
+
+
+Table users {
+  id uuid [pk, note: 'uuid5(tên:SĐT) do app tạo (ids.py), KHÔNG dùng gen_random_uuid()']
+  created_at timestamptz [not null, default: `now()`]
+  Note: 'num_buy, avg_spent -> view user_stats'
+}
+
 
 Table categories {
-    id int [pk, increment]
-    name text [not null]
+  id serial [pk]
+  name text [not null, unique]
 }
+
 Table meals {
-    id int [pk, increment]
-    cat_id int [not null]
-    name text [not null]
-    num_sold int [not null, default: 0]
-    price numeric [not null]
-    available bool [default: true]
-    is_hotsell bool [default: false]
-    is_bestsell bool [default: false]
-    is_seasonal bool [default: false]
-    is_combo bool [default: false]
-}
-Table meals_item{
-    id int [pk, increment]
-    meal_id int [not null]
-    item_id int [not null]
-    quantity int [default : 1]
-    group_id int [null]
-    indexes {
-        (meal_id, item_id, group_id) [unique]
-    }
-}
-Table items{
-    id int [pk, increment]
-    name text [not null]
-}
-Table option_groups{
-    id int [pk, increment]
-    meal_id int [not null]
-    name text [not null]
-    min_choices int [default: 1]
-    max_choices int [default: 1]
-}
-Table cart_items {
-  id int [pk, increment]
-  user_id uuid [not null]     
-  meal_id int [not null]  
-  quantity int [default: 1]  
-  indexes {
-    (user_id, meal_id) [unique]
-  }
-}
-Table history {
-    user_id uuid [not null]
-    meal_id int [not null]
-    times_order int [default: 1]
-    day_buy TIMESTAMP [not null]
-    indexes {
-        (user_id, meal_id) [pk]
-    }
-}
-Table user_fav_cat {
-  user_id uuid [not null]
+  id serial [pk]
+  source_id text [unique, note: 'id món bên API KFC, để chạy lại menu.py không bị trùng']
   cat_id int [not null]
-  indexes {
-    (user_id, cat_id) [pk] 
-  }
+  name text [not null]
+  description text [note: 'để BERT tạo embedding món']
+  price "numeric(10,0)" [not null, note: 'CHECK price >= 0']
+  available bool [not null, default: true]
+  is_hotsell bool [not null, default: false]
+  is_bestsell bool [not null, default: false]
+  is_seasonal bool [not null, default: false]
+  is_combo bool [not null, default: false]
+  Note: 'num_sold -> view meal_stats'
 }
-Table user_fav_meal {
-  user_id uuid [not null]
+
+Table items {
+  id serial [pk]
+  name text [not null, unique]
+}
+
+Table option_groups {
+  id serial [pk]
   meal_id int [not null]
+  name text [not null]
+  min_choices int [not null, default: 1]
+  max_choices int [not null, default: 1]
+  Note: 'CHECK 0 <= min_choices <= max_choices'
+}
+
+Table meals_item {
+  id serial [pk]
+  meal_id int [not null]
+  item_id int [not null]
+  quantity int [not null, default: 1]
+  group_id int [null, note: 'NULL = thành phần cố định; khác NULL = một lựa chọn trong nhóm']
+  extra_price "numeric(10,0)" [not null, default: 0, note: 'phụ thu khi chọn option (vd upsize)']
   indexes {
-    (user_id, meal_id) [pk] 
+    (meal_id, item_id, group_id) [unique, note: 'trong SQL: UNIQUE NULLS NOT DISTINCT']
   }
 }
-Ref: users.id < user_fav_meal.user_id
-Ref: meals.id < user_fav_meal.meal_id
-Ref: users.id < user_fav_cat.user_id
-Ref: categories.id < user_fav_cat.cat_id
-Ref: users.id < cart_items.user_id
-Ref: categories.id < meals.cat_id
-Ref: meals.id < cart_items.meal_id
-Ref: users.id < history.user_id
-Ref: meals.id < history.meal_id
-Ref: meals_item.meal_id > meals.id
+
+Table sessions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [null, note: 'NULL = khách vãng lai']
+  started_at timestamptz [not null, default: `now()`]
+  transcript text [note: 'câu khách nói (Speech-to-Text)']
+  budget "numeric(10,0)" [null, note: 'ngân sách trích từ câu nói']
+}
+
+Table orders {
+  id serial [pk]
+  session_id uuid [not null]
+  user_id uuid [null]
+  created_at timestamptz [not null, default: `now()`]
+  total "numeric(10,0)" [not null]
+  indexes {
+    (user_id, created_at)
+  }
+}
+
+Table order_items {
+  id serial [pk]
+  order_id int [not null]
+  meal_id int [not null]
+  quantity int [not null, default: 1]
+  unit_price "numeric(10,0)" [not null, note: 'giá lúc mua']
+  indexes {
+    order_id
+    meal_id
+  }
+}
+
+Table cart_items {
+  id serial [pk]
+  session_id uuid [not null]
+  meal_id int [not null]
+  quantity int [not null, default: 1]
+}
+
+Table rec_logs {
+  id serial [pk]
+  session_id uuid [not null]
+  meal_id int [not null]
+  stage text [not null, note: "'initial' | 'upsell'"]
+  source text [not null, note: "'linucb' | 'two_tower' | 'item2vec' | 'ilp'"]
+  position int [not null]
+  score "double precision"
+  chosen bool [not null, default: false, note: 'khách có chọn món này không -> reward LinUCB, nhãn LightGBM']
+  created_at timestamptz [not null, default: `now()`]
+  indexes {
+    session_id
+  }
+}
+Ref: meals.cat_id > categories.id
+Ref: option_groups.meal_id > meals.id [delete: cascade]
+Ref: meals_item.meal_id > meals.id [delete: cascade]
 Ref: meals_item.item_id > items.id
-Ref: option_groups.meal_id > meals.id
-Ref: meals_item.group_id > option_groups.id
+Ref: meals_item.group_id > option_groups.id [delete: cascade]
+
+Ref: sessions.user_id > users.id
+Ref: orders.session_id > sessions.id
+Ref: orders.user_id > users.id
+Ref: order_items.order_id > orders.id [delete: cascade]
+Ref: order_items.meal_id > meals.id
+Ref: cart_items.session_id > sessions.id [delete: cascade]
+Ref: cart_items.meal_id > meals.id
+Ref: rec_logs.session_id > sessions.id [delete: cascade]
+Ref: rec_logs.meal_id > meals.id
 
 
-
+Note views {
+'''
+user_stats(user_id, num_buy, avg_spent, last_order_at)  
+user_meal_counts(user_id, meal_id, times_order, num_orders, last_buy)  
+user_fav_meal(user_id, meal_id, num_orders, rnk)   -- top 5 món mỗi khách
+user_fav_cat(user_id, cat_id, num_orders, rnk)     -- top 3 danh mục mỗi khách
+meal_stats(meal_id, num_sold, num_sold_30d)        
+'''
+}

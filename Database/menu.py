@@ -1,169 +1,189 @@
-import pandas as pd
-import requests
+
+import os
 import re
+
 import psycopg2
-import random
+import requests
+
+MENU_URL = "https://api.kfcvietnam.com.vn/menu/kfcvn-generic-menu"
+
+DB_CONFIG = {
+    "dbname": os.getenv("DB_NAME", "recsys_db"),
+    "user": os.getenv("DB_USER", "postgres"),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": os.getenv("DB_PORT", "5432"),
+}
+
+SEASONAL_TYPES = {"Hot Deal", "Value Deals", "New Product"}
+COMBO_TYPES = {"For One", "Sharing"}
+
+
+
+def vn(field, default=""):
+    for d in field or []:
+        if d.get("lang") == "vn" and d.get("value"):
+            return d["value"].strip()
+    return default
+
 
 def parse_item(text):
-    text=text.strip()
-    match=re.match(r"^(\d+)\s*(.*)$",text)
+    text = text.strip()
+    match = re.match(r"^(\d+)\s*(.*)$", text)
     if match:
-        quantity=int(match.group(1))
-        name =match.group(2).strip()
-    else :
-        quantity=1
-        name=text
-
-    return name, quantity
-
-url="https://api.kfcvietnam.com.vn/menu/kfcvn-generic-menu"
-response=requests.get(url)
-data=response.json()
-
-db_config={
-    'dbname' : 'recsys_db',
-    'user' : 'postgres',
-    'password' : '310506',
-}
-conn=psycopg2.connect(**db_config)
-cursor=conn.cursor()
-
-sub_cat=data['categories'][0]['categories']
-
-for cat in sub_cat:
-    for d in cat.get('dname',[]):
-        if d.get('lang')=='vn':
-            name=d['value']
-            cursor.execute(
-                """
-                INSERT INTO categories (name)
-                VALUES(%s)
-                """,
-                (name.strip(),)
-            )
-            cat_id = cursor.fetchone()[0]
-            break
-    products=cat['products'] or []
-    for product in products:
-        items=product['items'] or []
-        for item in items:
-            name=''
-            is_combo=False
-            is_bestsell=False
-            is_seasonal=False
-            is_hotsell=False
-            for d in item.get('dname',[]):
-                if d.get('lang')=='vn':
-                    name=d['value']
-            price=item['price']
-            strikePrice=item['strikePrice'] or 0
-            type=item['categoryName']
-            if type in ('Hot Deal', "Value Deals", 'New Product') or ( strikePrice >0  and strikePrice  > price):
-                is_seasonal=True
-            elif type in ('For One','Sharing'):
-                is_combo=True
-            desciption=product['description'] or []
-            num_meal=[]
-            for d in desciption:
-                if d.get('lang')== 'vn':
-                    meal=d.get('value')
-                    group=meal.split("+")
-                    for g in group:
-                        option=g.split("/")
-                        for op in option:
-                            item_name, quantity=parse_item(op)
-                            num_meal.append({item_name : quantity})
-            if len(num_meal) > 1:
-                is_combo=True
-            elif len(num_meal)==1 and next(iter(num_meal[0].values())) > 1:
-                is_combo=True
-            cursor.execute(
-                """
-                INSERT INTO meals (cat_id, name, price, available, is_hotsell, is_bestsell, is_seasonal, is_combo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                """,
-                (cat_id, name, price, True, is_hotsell, is_bestsell, is_seasonal, is_combo)
-            )
-            meal_id = cursor.fetchone()[0]
-            modgrps=item.get('modgrps') or []
-            for grp in modgrps:
-                grp_name=grp['name']
-                for d in grp.get('dname',[]):
-                    if d.get('lang')=='vn':
-                        grp_name=d['value'].strip()
-                min_choices=grp.get('min',1)
-                max_choices=grp.get('max',1)
-
-                cursor.execute(
-                    """
-                    INSERT INTO option_groups (meal_id, name, min_choices, max_choices)
-                    VALUES (%s, %s, %s, %s) RETURNING id
-                    """,
-                    (meal_id, grp_name, min_choices, max_choices)
-                )
-                group_id=cursor.fetchone()[0]
-
-                for mod in grp.get('modifiers') or []:
-                    mod_name=mod['name']
-                    for d in mod.get('dname',[]):
-                        if d.get('lang')=='vn':
-                            mod_name=d['value']
-                    item_name, quantity=parse_item(mod_name) 
-                    cursor.execute("SELECT id FROM items WHERE name=%s", (item_name,))
-                    row=cursor.fetchone()
-                    if row:
-                        item_id=row[0]
-                    else:
-                        cursor.execute("INSERT INTO items (name) VALUES (%s) RETURNING id", (item_name,))
-                        item_id=cursor.fetchone()[0]
-
-                    cursor.execute(
-                        """
-                        INSERT INTO meals_item (meal_id, item_id, quantity, group_id)
-                        VALUES (%s, %s, %s, %s)
-                        ON CONFLICT (meal_id, item_id, group_id) DO NOTHING
-                        """,
-                        (meal_id, item_id, quantity, group_id)
-                    )
-                    for sub_grp in mod.get('modgrps') or []:
-                        sub_name=sub_grp['name']
-                        for d in sub_grp.get('dname',[]):
-                            if d.get('lang')=='vn':
-                                sub_name=d['value'].strip()
-                        sub_name=item_name + ' - ' + sub_name     
-                        cursor.execute(
-                            """
-                            INSERT INTO option_groups (meal_id, name, min_choices, max_choices)
-                            VALUES (%s, %s, %s, %s) RETURNING id
-                            """,
-                            (meal_id, sub_name, sub_grp.get('min',1), sub_grp.get('max',1))
-                        )
-                        sub_group_id=cursor.fetchone()[0]
-
-                        for sub_mod in sub_grp.get('modifiers') or []:
-                            sub_item=sub_mod['name']
-                            for d in sub_mod.get('dname',[]):
-                                if d.get('lang')=='vn':
-                                    sub_item=d['value'].strip()   # "Gà Giòn Cay"
-
-                            cursor.execute("SELECT id FROM items WHERE name=%s", (sub_item,))
-                            row=cursor.fetchone()
-                            if row:
-                                sub_item_id=row[0]
-                            else:
-                                cursor.execute("INSERT INTO items (name) VALUES (%s) RETURNING id", (sub_item,))
-                                sub_item_id=cursor.fetchone()[0]
-
-                            cursor.execute(
-                                """
-                                INSERT INTO meals_item (meal_id, item_id, quantity, group_id)
-                                VALUES (%s, %s, %s, %s)
-                                ON CONFLICT (meal_id, item_id, group_id) DO NOTHING
-                                """,
-                                (meal_id, sub_item_id, 1, sub_group_id)
-                            )
-conn.commit()
-cursor.close()
-conn.close()
+        return match.group(2).strip(), int(match.group(1))
+    return text, 1
 
 
+def parse_components(description):
+    """
+    'A + 2 B + C / D' -> fixed = [('A',1), ('B',2)], n_parts = 3
+    Phần có '/' là lựa chọn (đã có trong modgrps) nên không coi là thành phần cố định.
+    """
+    fixed, n_parts = [], 0
+    for part in description.split("+"):
+        part = part.strip()
+        if not part:
+            continue
+        n_parts += 1
+        if "/" not in part:
+            fixed.append(parse_item(part))
+    return fixed, n_parts
+
+
+# --------------------------------------------------------------------------- #
+# Ghi DB
+# --------------------------------------------------------------------------- #
+def upsert_category(cur, name):
+    cur.execute(
+        """
+        INSERT INTO categories (name) VALUES (%s)
+        ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+        RETURNING id
+        """,
+        (name,),
+    )
+    return cur.fetchone()[0]
+
+
+def get_or_create_item(cur, name):
+    cur.execute(
+        """
+        INSERT INTO items (name) VALUES (%s)
+        ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+        RETURNING id
+        """,
+        (name,),
+    )
+    return cur.fetchone()[0]
+
+
+def upsert_meal(cur, cat_id, item, product):
+    name = vn(item.get("dname"), item.get("name", ""))
+    description = vn(item.get("description")) or vn(product.get("description"))
+    price = item.get("price") or 0
+    strike_price = item.get("strikePrice") or 0
+    item_type = item.get("categoryName")
+
+    is_seasonal = item_type in SEASONAL_TYPES or strike_price > price
+    fixed, n_parts = parse_components(description)
+    is_combo = (
+        item_type in COMBO_TYPES
+        or n_parts > 1
+        or (len(fixed) == 1 and fixed[0][1] > 1)
+    )
+
+    cur.execute(
+        """
+        INSERT INTO meals (source_id, cat_id, name, description, price,
+                           available, is_seasonal, is_combo)
+        VALUES (%s, %s, %s, %s, %s, true, %s, %s)
+        ON CONFLICT (source_id) DO UPDATE SET
+            cat_id = EXCLUDED.cat_id, name = EXCLUDED.name,
+            description = EXCLUDED.description, price = EXCLUDED.price,
+            available = true, is_seasonal = EXCLUDED.is_seasonal,
+            is_combo = EXCLUDED.is_combo
+        RETURNING id
+        """,
+        (str(item["id"]), cat_id, name, description, price, is_seasonal, is_combo),
+    )
+    return cur.fetchone()[0], fixed
+
+
+def insert_meal_item(cur, meal_id, item_id, quantity, group_id, extra_price=0):
+    cur.execute(
+        """
+        INSERT INTO meals_item (meal_id, item_id, quantity, group_id, extra_price)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (meal_id, item_id, group_id) DO NOTHING
+        """,
+        (meal_id, item_id, quantity, group_id, extra_price),
+    )
+
+
+def insert_option_group(cur, meal_id, grp, prefix=""):
+    """Một nhóm lựa chọn + các option bên trong. Nhóm lồng nhau xử lý bằng đệ quy."""
+    name = prefix + vn(grp.get("dname"), grp.get("name", ""))
+    cur.execute(
+        """
+        INSERT INTO option_groups (meal_id, name, min_choices, max_choices)
+        VALUES (%s, %s, %s, %s) RETURNING id
+        """,
+        (meal_id, name, grp.get("min", 1), grp.get("max", 1)),
+    )
+    group_id = cur.fetchone()[0]
+
+    for mod in grp.get("modifiers") or []:
+        item_name, quantity = parse_item(vn(mod.get("dname"), mod.get("name", "")))
+        item_id = get_or_create_item(cur, item_name)
+        insert_meal_item(cur, meal_id, item_id, quantity, group_id, mod.get("price") or 0)
+        for sub in mod.get("modgrps") or []:
+            insert_option_group(cur, meal_id, sub, prefix=f"{item_name} - ")
+
+
+def load_menu(cur, data):
+    counts = {"categories": 0, "meals": 0}
+    for cat in data["categories"][0]["categories"]:
+        cat_name = vn(cat.get("dname"), cat.get("name", ""))
+        if not cat_name:
+            continue
+        cat_id = upsert_category(cur, cat_name)
+        counts["categories"] += 1
+
+        for product in cat.get("products") or []:
+            for item in product.get("items") or []:
+                meal_id, fixed = upsert_meal(cur, cat_id, item, product)
+                counts["meals"] += 1
+
+                # xoá chi tiết cũ rồi nạp lại -> chạy lại không bị nhân đôi option
+                cur.execute("DELETE FROM meals_item WHERE meal_id = %s", (meal_id,))
+                cur.execute("DELETE FROM option_groups WHERE meal_id = %s", (meal_id,))
+
+                for item_name, quantity in fixed:
+                    insert_meal_item(cur, meal_id, get_or_create_item(cur, item_name),
+                                     quantity, None)
+                for grp in item.get("modgrps") or []:
+                    insert_option_group(cur, meal_id, grp)
+    return counts
+
+
+def main():
+    response = requests.get(MENU_URL, timeout=30)
+    response.raise_for_status()
+    data = response.json()
+
+    conn = psycopg2.connect(**DB_CONFIG)
+    try:
+        with conn:                       # tự commit nếu ổn, rollback nếu lỗi
+            with conn.cursor() as cur:
+                counts = load_menu(cur, data)
+                cur.execute("SELECT COUNT(*) FROM meals")
+                total_meals = cur.fetchone()[0]
+        print(f"Đã nạp {counts['categories']} danh mục, {counts['meals']} lượt món "
+              f"({total_meals} món khác nhau trong DB).")
+    finally:
+        conn.close()
+
+
+if __name__ == "__main__":
+    main()
