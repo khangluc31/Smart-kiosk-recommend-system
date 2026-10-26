@@ -1,9 +1,4 @@
-"""
-ranker.py — LightGBM xếp lại top 20 ứng viên (từ two tower hoặc LinUCB) thành top 5.
 
-Không đưa thẳng vector BERT 768 chiều vào LightGBM (cây quyết định xử lý kém
-dữ liệu kiểu đó). Thay vào đó dùng ĐỘ TƯƠNG ĐỒNG giữa câu khách nói và mô tả món.
-"""
 import os
 import numpy as np
 import lightgbm as lgb
@@ -22,11 +17,6 @@ def _cos(a, b):
 
 
 def build_features(candidates, scores, source, meals, user, text_ctx=None, meal_vecs=None):
-    """
-    candidates/scores: kết quả retrieval.  source: 'two_tower' | 'linucb'.
-    user: features.user_features(...) (khách không có lịch sử -> lịch sử rỗng).
-    text_ctx: ContextProcessor.process(...)  meal_vecs: {meal_id: vector} (có thể None).
-    """
     text_ctx = text_ctx or {}
     meal_vecs = meal_vecs or {}
     budget = user.get("budget")
@@ -60,7 +50,6 @@ class Ranker:
         self.booster = booster
 
     def fit(self, groups, seed=42):
-        """groups: [(X, y)] — mỗi group là 1 lần gợi ý (1 đơn), y = 1 nếu khách mua món đó."""
         groups = [(X, y) for X, y in groups if len(y) and y.sum() > 0]
         X = np.vstack([g[0] for g in groups])
         y = np.concatenate([g[1] for g in groups])
@@ -73,7 +62,6 @@ class Ranker:
         return self
 
     def rank(self, candidates, X, k=5):
-        """Trả về (top k meal_id, điểm). Chưa train -> giữ thứ tự retrieval."""
         if self.booster is None or len(candidates) == 0:
             return list(candidates[:k]), [None] * min(k, len(candidates))
         pred = self.booster.predict(X)

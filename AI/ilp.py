@@ -2,10 +2,8 @@
 from collections import Counter
 import pulp
 from menu_model import MenuModel, _cart_lines, banned_from_text, meal_allowed  
-
-SCORE_WEIGHTS = {"hot": 1.0, "best": 1.0, "seasonal": 0.5, "best_fit": 2.0, "popular": 0.5}
-
-
+SCORE_WEIGHTS = {"hot": 0.8, "best": 1.0, "seasonal": 0.5, "best_fit": 2.0, "popular": 0.5}
+MIN_PMI = 0.0
 def _solve(prob):
     prob.solve(pulp.PULP_CBC_CMD(msg=False))
     return pulp.LpStatus[prob.status] == "Optimal"
@@ -28,17 +26,30 @@ def build_data(model, cart, budget=None, unwant_texts=(), fit_scores=None):
     banned = banned_from_text(model, unwant_texts)
     banned["meals"] -= set(chosen)
     feasible_set = {j for j in meals if meal_allowed(model, j, banned)} | set(chosen)
+
+    upsell_set, score_set = build_upsell(model, feasible_set, chosen, fit_scores)
+    return {
+        "chosen": chosen, "composition": composition, "price_set": price_set,
+        "customer_choice_set": customer_choice_set, "feasible_set": feasible_set,
+        "upsell_set": upsell_set, "score_set": score_set, "budget": budget,
+    }
+
+
+def build_upsell(model, feasible_set, chosen, fit_scores=None, min_fit=None):
+    meals = model.meals
     hot_set = {j for j in feasible_set if meals[j].get("is_hotsell")}
     best_set = {j for j in feasible_set if meals[j].get("is_bestsell")}
     seasonal_set = {j for j in feasible_set if meals[j].get("is_seasonal")}
-    fit = {j: s for j, s in (fit_scores or {}).items() if j in feasible_set}
-    if fit:                                              
+    fit = {j: s for j, s in (fit_scores or {}).items() if j in feasible_set and j not in chosen}
+    rejected = {j for j, s in fit.items() if min_fit is not None and s <= min_fit}
+    if fit:                                               
         lo, hi = min(fit.values()), max(fit.values())
         fit = {j: (s - lo) / (hi - lo) if hi > lo else 1.0 for j, s in fit.items()}
     best_fit = {j for j, s in sorted(fit.items(), key=lambda x: -x[1])[:10]}
     max_sold = max((meals[j].get("num_sold", 0) for j in meals), default=0) or 1
 
     upsell_set = (hot_set | best_set | best_fit | seasonal_set) - set(chosen)
+    upsell_set -= rejected                              
     score_set = {
         j: SCORE_WEIGHTS["hot"] * (j in hot_set)
         + SCORE_WEIGHTS["best"] * (j in best_set)
@@ -47,11 +58,7 @@ def build_data(model, cart, budget=None, unwant_texts=(), fit_scores=None):
         + SCORE_WEIGHTS["popular"] * meals[j].get("num_sold", 0) / max_sold
         for j in upsell_set
     }
-    return {
-        "chosen": chosen, "composition": composition, "price_set": price_set,
-        "customer_choice_set": customer_choice_set, "feasible_set": feasible_set,
-        "upsell_set": upsell_set, "score_set": score_set, "budget": budget,
-    }
+    return upsell_set, score_set
 
 
 def optimize_ilp(feasible_set, price_set, composition, customer_choice_set):
@@ -93,6 +100,7 @@ def upsell1(feasible_set, price_set, composition, customer_choice_set,
         return None
     return {j: int(round(v.value())) for j, v in x.items() if v.value() and v.value() > 0.5}
 
+
 def upsell2(upsell_set, price_set, score_set, left=None, k=2):
     if not upsell_set:
         return []
@@ -109,10 +117,14 @@ def upsell2(upsell_set, price_set, score_set, left=None, k=2):
 
 def _cost(cart, price_set):
     return sum(price_set[j] * n for j, n in cart.items())
+
+
 def _items(cart, meals):
     return [{"meal_id": j, "name": meals[j]["name"], "qty": n, "options": {}}
             for j, n in sorted(cart.items(), key=lambda x: -meals[x[0]]["price"])]
-def plan(model, cart, budget=None, unwant_texts=(), scores=None, k_addons=2):
+
+
+def plan(model, cart, budget=None, unwant_texts=(), scores=None, k_addons=2, fit_fn=None):
     meals = model.meals
     d = build_data(model, cart, budget, unwant_texts, scores)
     original_cost = _cost(d["chosen"], d["price_set"])
@@ -120,7 +132,6 @@ def plan(model, cart, budget=None, unwant_texts=(), scores=None, k_addons=2):
     if best is None:                                  
         best = dict(d["chosen"])
     best_cost = _cost(best, d["price_set"])
-
     combo_set = {j for j in meals if meals[j].get("is_combo")}
     base_combo_units = sum(sum(d["composition"][j].values()) * n
                            for j, n in best.items() if j in combo_set)
@@ -138,6 +149,13 @@ def plan(model, cart, budget=None, unwant_texts=(), scores=None, k_addons=2):
                    "cost": _cost(up, d["price_set"]),
                    "extra_cost": _cost(up, d["price_set"]) - best_cost,
                    "gained": {model.class_label[i]: n for i, n in gained.items() if n > 0}}
+    fit_source = "scores" if scores else "none"
+    if fit_fn is not None:
+        fit_scores = fit_fn(list(best) + [j for j in d["chosen"] if j not in best])
+        if fit_scores:
+            d["upsell_set"], d["score_set"] = build_upsell(model, d["feasible_set"], d["chosen"],
+                                                           fit_scores, min_fit=MIN_PMI)
+            fit_source = "item2vec"
 
     left = budget - best_cost if budget else None
     ilp2_added = set(up or {}) - set(best)            # món ILP2 đã gợi ý -> ILP3 không lặp lại
@@ -154,6 +172,7 @@ def plan(model, cart, budget=None, unwant_texts=(), scores=None, k_addons=2):
         "saving": original_cost - best_cost,
         "upgrade": upgrade,
         "addons": addons,
+        "fit_source": fit_source,
     }
 
 
