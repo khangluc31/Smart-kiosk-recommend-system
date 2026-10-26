@@ -1,0 +1,25 @@
+{"text": "cho mình 2 miếng gà rán với pepsi, không lấy khoai tây nhé", "tokens": ["cho", "mình", "2", "miếng", "gà", "rán", "với", "pepsi", ",", "không", "lấy", "khoai", "tây", "nhé"], "labels": [0, 0, 0, 0, 1, 3, 0, 1, 0, 0, 0, 2, 4, 0]}
+{"text": "tầm 100k, đừng cho tương ớt, lấy burger zinger", "tokens": ["tầm", "100k", ",", "đừng", "cho", "tương", "ớt", ",", "lấy", "burger", "zinger"], "labels": [0, 0, 0, 0, 0, 2, 4, 0, 0, 1, 3]}
+{"text": "pepsi thì thôi khỏi, cho anh combo nhóm", "tokens": ["pepsi", "thì", "thôi", "khỏi", ",", "cho", "anh", "combo", "nhóm"], "labels": [2, 0, 0, 0, 0, 0, 0, 1, 3]}
+{"text": "cho minh combo ga ran, khong uong 7up, nhung uong pepsi", "tokens": ["cho", "minh", "combo", "ga", "ran", ",", "khong", "uong", "7up", ",", "nhung", "uong", "pepsi"], "labels": [0, 0, 1, 3, 3, 0, 0, 0, 2, 0, 0, 0, 1]}
+{"text": "em muốn ăn gì đó cay cay, không có hành", "tokens": ["em", "muốn", "ăn", "gì", "đó", "cay", "cay", ",", "không", "có", "hành"], "labels": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]}
+{"text": "mình muốn ăn gà rán nhưng không lấy gà rán cay, cảm ơn bạn", "tokens": ["mình", "muốn", "ăn", "gà", "rán", "nhưng", "không", "lấy", "gà", "rán", "cay", ",", "cảm", "ơn", "bạn"], "labels": [0, 0, 0, 1, 3, 0, 0, 0, 2, 4, 4, 0, 0, 0, 0]}
+{"text": "không uống 7up nhưng uống pepsi", "tokens": ["không", "uống", "7up", "nhưng", "uống", "pepsi"], "labels": [0, 0, 2, 0, 0, 1]}
+{"text": "dạ cho em một combo cơm gà với ạ", "tokens": ["dạ", "cho", "em", "một", "combo", "cơm", "gà", "với", "ạ"], "labels": [0, 0, 0, 0, 1, 3, 3, 0, 0]}
+{"text": "khoai tây chiên khỏi nha, lấy hai bánh trứng", "tokens": ["khoai", "tây", "chiên", "khỏi", "nha", ",", "lấy", "hai", "bánh", "trứng"], "labels": [2, 4, 4, 0, 0, 0, 0, 0, 1, 3]}
+{"text": "anh ăn mì ý gà viên, em thì cơm gà xốt tương tỏi", "tokens": ["anh", "ăn", "mì", "ý", "gà", "viên", ",", "em", "thì", "cơm", "gà", "xốt", "tương", "tỏi"], "labels": [0, 0, 1, 3, 3, 3, 0, 0, 0, 1, 3, 3, 3, 3]}
+{"text": "mình bị dị ứng phô mai nên đừng bỏ vào nhé", "tokens": ["mình", "bị", "dị", "ứng", "phô", "mai", "nên", "đừng", "bỏ", "vào", "nhé"], "labels": [0, 0, 0, 0, 2, 4, 0, 0, 0, 0, 0]}
+{"text": "có kem sundae không bạn, cho mình 2 cái", "tokens": ["có", "kem", "sundae", "không", "bạn", ",", "cho", "mình", "2", "cái"], "labels": [0, 1, 3, 0, 0, 0, 0, 0, 0, 0]}
+{"text": "hôm nay mình chưa biết ăn gì, gợi ý giúp với", "tokens": ["hôm", "nay", "mình", "chưa", "biết", "ăn", "gì", ",", "gợi", "ý", "giúp", "với"], "labels": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
+{"text": "lay burger tom va khoai tay chien, khong lay tuong ot", "tokens": ["lay", "burger", "tom", "va", "khoai", "tay", "chien", ",", "khong", "lay", "tuong", "ot"], "labels": [0, 1, 3, 0, 1, 3, 3, 0, 0, 0, 2, 4]}
+{"text": "cho cả nhà bucket gà rán nhé, nước thì pepsi không đường", "tokens": ["cho", "cả", "nhà", "bucket", "gà", "rán", "nhé", ",", "nước", "thì", "pepsi", "không", "đường"], "labels": [0, 0, 0, 1, 3, 3, 0, 0, 0, 0, 1, 3, 3]}
+{"text": "đừng có ớt với hành gì hết, mình ăn gà quay thôi", "tokens": ["đừng", "có", "ớt", "với", "hành", "gì", "hết", ",", "mình", "ăn", "gà", "quay", "thôi"], "labels": [0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 1, 3, 0]}
+{"text": "gà popcorn một phần, nước ngọt thì miễn", "tokens": ["gà", "popcorn", "một", "phần", ",", "nước", "ngọt", "thì", "miễn"], "labels": [1, 3, 0, 0, 0, 2, 4, 0, 0]}
+{"text": "thôi bỏ salad đi, đổi sang súp rong biển", "tokens": ["thôi", "bỏ", "salad", "đi", ",", "đổi", "sang", "súp", "rong", "biển"], "labels": [0, 0, 2, 0, 0, 0, 0, 1, 3, 3]}
+{"text": "mình kiêng đồ chiên, có cơm gà quay không", "tokens": ["mình", "kiêng", "đồ", "chiên", ",", "có", "cơm", "gà", "quay", "không"], "labels": [0, 0, 2, 4, 0, 0, 1, 3, 3, 0]}
+{"text": "em gọi combo burger tôm nha chị, không cần nước", "tokens": ["em", "gọi", "combo", "burger", "tôm", "nha", "chị", ",", "không", "cần", "nước"], "labels": [0, 0, 1, 3, 3, 0, 0, 0, 0, 0, 2]}
+{"text": "cho tui 2 miếng gà giòn cay với trà đào", "tokens": ["cho", "tui", "2", "miếng", "gà", "giòn", "cay", "với", "trà", "đào"], "labels": [0, 0, 0, 0, 1, 3, 3, 0, 1, 3]}
+{"text": "tôi không ăn được cay đâu, lấy gà rán truyền thống nha", "tokens": ["tôi", "không", "ăn", "được", "cay", "đâu", ",", "lấy", "gà", "rán", "truyền", "thống", "nha"], "labels": [0, 0, 0, 0, 2, 0, 0, 0, 1, 3, 3, 3, 0]}
+{"text": "ngân sách 200k thôi, lấy combo nhóm với 7up", "tokens": ["ngân", "sách", "200k", "thôi", ",", "lấy", "combo", "nhóm", "với", "7up"], "labels": [0, 0, 0, 0, 0, 0, 1, 3, 0, 1]}
+{"text": "bỏ mayonnaise ra giùm, còn lại giữ nguyên burger gà quay", "tokens": ["bỏ", "mayonnaise", "ra", "giùm", ",", "còn", "lại", "giữ", "nguyên", "burger", "gà", "quay"], "labels": [0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 3, 3]}
+{"text": "mình muốn phô mai que nhưng không muốn khoai tây nghiền", "tokens": ["mình", "muốn", "phô", "mai", "que", "nhưng", "không", "muốn", "khoai", "tây", "nghiền"], "labels": [0, 0, 1, 3, 3, 0, 0, 0, 2, 4, 4]}
