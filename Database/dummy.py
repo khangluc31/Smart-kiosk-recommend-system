@@ -41,7 +41,7 @@ RESET = True        # xoá users/sessions/orders cũ trước khi sinh (KHÔNG �
 DB_CONFIG = {
     "dbname": os.getenv("DB_NAME", "recsys_db"),
     "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", ""),
+    "password": os.getenv("DB_PASSWORD", "123456"),
     "host": os.getenv("DB_HOST", "localhost"),
     "port": os.getenv("DB_PORT", "5432"),
 }

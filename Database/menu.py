@@ -10,7 +10,7 @@ MENU_URL = "https://api.kfcvietnam.com.vn/menu/kfcvn-generic-menu"
 DB_CONFIG = {
     "dbname": os.getenv("DB_NAME", "recsys_db"),
     "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", ""),
+    "password": os.getenv("DB_PASSWORD", "123456"),
     "host": os.getenv("DB_HOST", "localhost"),
     "port": os.getenv("DB_PORT", "5432"),
 }
@@ -81,7 +81,9 @@ def get_or_create_item(cur, name):
 def upsert_meal(cur, cat_id, item, product):
     name = vn(item.get("dname"), item.get("name", ""))
     description = vn(item.get("description")) or vn(product.get("description"))
-    price = item.get("price") or 0
+    price = item.get("price")
+    if price is None or float(price) <= 0:
+        return None, []
     strike_price = item.get("strikePrice") or 0
     item_type = item.get("categoryName")
 
@@ -145,7 +147,13 @@ def load_menu(cur, data):
     counts = {"categories": 0, "meals": 0}
     for cat in data["categories"][0]["categories"]:
         cat_name = vn(cat.get("dname"), cat.get("name", ""))
+        EXCLUDED_CATEGORIES = {
+            "upsell_2",
+        }
         if not cat_name:
+            continue
+        if cat_name.strip().lower() in EXCLUDED_CATEGORIES:
+            print(f"Bỏ qua danh mục: {cat_name}")
             continue
         cat_id = upsert_category(cur, cat_name)
         counts["categories"] += 1
