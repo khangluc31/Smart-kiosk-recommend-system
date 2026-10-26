@@ -7,14 +7,19 @@ from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 
 class context_processing:
-    def __init__(self):
+    def __init__(self, model_path=None, device=None):
         self.wanted=[]
         self.unwanted=[]
         self.current_type=None
         self.current_token=[]
         self.token_indices=[]
         self.sentence_context_vector=None
-        self.model_name=Path(__file__).resolve().parent / "ner_model"
+        self.model_path=model_path
+        if self.model_path is None:
+            self.model_name=Path(__file__).resolve().parent / "models/ner_model"
+        else:
+            self.model_name = model_path
+        self.device = device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer=AutoTokenizer.from_pretrained(self.model_name)
         self.model=AutoModelForTokenClassification.from_pretrained(
             self.model_name, 

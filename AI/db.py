@@ -1,9 +1,4 @@
-"""
-db.py — mọi truy cập database nằm ở đây (theo schema.sql).
 
-Các model (regular, unregular, ranker) không biết gì về SQL;
-chúng chỉ nhận dict/list mà file này trả về.
-"""
 import os
 from collections import defaultdict
 
@@ -13,7 +8,7 @@ from psycopg2.extras import execute_values
 DB_CONFIG = {
     "dbname": os.getenv("DB_NAME", "recsys_db"),
     "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", ""),
+    "password": os.getenv("DB_PASSWORD", "123456"),
     "host": os.getenv("DB_HOST", "localhost"),
     "port": os.getenv("DB_PORT", "5432"),
 }
@@ -46,11 +41,9 @@ class Database:
             cur.execute(sql, params)
             return cur.fetchone() if fetch else None
 
-    # ------------------------------------------------------------------ #
+    
     # Menu
-    # ------------------------------------------------------------------ #
     def get_meals(self):
-        """{meal_id: {...}} — chỉ đọc, gồm cả món hết hàng (cờ available)."""
         rows = self._all("""
             SELECT m.id, m.cat_id, m.name, COALESCE(m.description, ''), m.price,
                    m.available, m.is_hotsell, m.is_bestsell, m.is_seasonal, m.is_combo,
@@ -68,11 +61,6 @@ class Database:
         }
 
     def get_menu_structure(self):
-        """
-        Cấu trúc món cho ILP:
-          fixed[meal_id]  = [(item_id, item_name, item_type, quantity)]        thành phần cố định
-          groups[meal_id] = [{"id","name","min","max","options":[(item_id, name, type, qty, extra_price)]}]
-        """
         fixed, groups = defaultdict(list), defaultdict(dict)
         for meal_id, item_id, name, itype, qty, gid, gname, gmin, gmax, extra in self._all("""
             SELECT mi.meal_id, i.id, i.name, i.item_type, mi.quantity,
@@ -93,16 +81,9 @@ class Database:
     def get_category_names(self):
         return dict(self._all("SELECT id, name FROM categories"))
 
-    # ------------------------------------------------------------------ #
-    # Lịch sử đơn hàng
-    # ------------------------------------------------------------------ #
+   
     def get_orders(self, user_id=None, before=None, include_guests=True):
-        """
-        Danh sách đơn, sắp theo thời gian tăng dần:
-            {"order_id", "session_id", "user_id", "created_at", "total", "budget",
-             "items": [(meal_id, quantity), ...]}
-        user_id: chỉ lấy đơn của khách này.  before: chỉ lấy đơn trước thời điểm này.
-        """
+
         where, params = [], []
         if user_id is not None:
             where.append("o.user_id = %s")
@@ -143,9 +124,7 @@ class Database:
                 by_user[o["user_id"]].append(o)
         return dict(by_user)
 
-    # ------------------------------------------------------------------ #
-    # Khách hàng
-    # ------------------------------------------------------------------ #
+    
     def user_exists(self, user_id):
         return self._one("SELECT 1 FROM users WHERE id = %s", (user_id,)) is not None
 
@@ -156,9 +135,7 @@ class Database:
         row = self._one("SELECT num_buy FROM user_stats WHERE user_id = %s", (user_id,))
         return int(row[0]) if row else 0
 
-    # ------------------------------------------------------------------ #
-    # Phiên gọi món, log gợi ý, đơn hàng
-    # ------------------------------------------------------------------ #
+    
     def create_session(self, user_id=None, transcript=None, budget=None):
         row = self._write(
             "INSERT INTO sessions (user_id, transcript, budget) VALUES (%s, %s, %s) "

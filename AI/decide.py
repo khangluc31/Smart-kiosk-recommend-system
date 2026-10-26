@@ -1,16 +1,5 @@
-"""
-decide.py — phân luồng khi phục vụ khách (theo sơ đồ), dùng các model của bạn:
 
-  câu khách nói ─► context (ngân sách, thứ không muốn, vector câu)
-  có tài khoản & >= 11 đơn ─► regular.TwoTowerRecommender ─┐
-  còn lại                  ─► unregular.linUCB            ─┴─► top 20 ─► ranker (LightGBM) ─► top 5
-  khách chọn món ─► ilp.plan: giỏ rẻ nhất + nâng cấp + gợi ý mua thêm
-  khách đặt đơn  ─► lưu orders + rec_logs ─► linUCB.update (reward 1/0 cho món đã hiển thị)
 
-Chạy:
-  python decide.py train   # train two tower + warm start LinUCB từ lịch sử đơn (chạy offline)
-  python decide.py demo    # thử 1 phiên phục vụ
-"""
 import os
 import pickle
 import sys
@@ -20,6 +9,7 @@ import numpy as np
 
 import ilp
 from db import Database
+from item2vec import Item2Vec
 from features import VN_TZ, build_queries, user_features
 from ids import create_user_id
 from ranker import Ranker, build_features
@@ -33,6 +23,7 @@ MODEL_DIR = os.getenv("MODEL_DIR", "models")
 TWO_TOWER_PATH = os.path.join(MODEL_DIR, "two_tower.pt")
 LINUCB_PATH = os.path.join(MODEL_DIR, "linucb.pkl")
 RANKER_PATH = os.path.join(MODEL_DIR, "ranker.txt")
+ITEM2VEC_PATH = os.path.join(MODEL_DIR, "item2vec.pkl")
 
 
 # --------------------------------------------------------------------------- #
@@ -152,6 +143,8 @@ class RecommendationPipeline:
             self.linucb = linUCB(len(self.meal_ids), N_CONTEXT, alpha=1.0)
             self.linucb.warm_start(linucb_history(db.get_orders(), self.arm_of))
             save_linucb(self.linucb, self.meal_ids)
+        self.item2vec = (Item2Vec.load(ITEM2VEC_PATH)    # món hay đi cùng giỏ -> best_fit của ILP3
+                         if os.path.exists(ITEM2VEC_PATH) else None)
         self.ranker = Ranker.load(RANKER_PATH)        # chưa train -> giữ thứ tự retrieval
         self.meal_vecs = {}                           # vector món cho ranker (khi có model embedding)
         self._sessions = {}                           # session_id -> bối cảnh để update / ILP
@@ -207,7 +200,8 @@ class RecommendationPipeline:
         """cart = [(meal_id, qty)] hoặc [{"meal_id", "qty", "choices": {group_id: [item_id]}}]"""
         info = self._sessions.get(session_id, {})
         result = ilp.plan(self.menu_model, cart, budget=info.get("budget"),
-                          unwant_texts=info.get("unwant", []), scores=info.get("scores") or None)
+                          unwant_texts=info.get("unwant", []), scores=info.get("scores") or None,
+                          fit_fn=self.item2vec.scores_for_cart if self.item2vec else None)
         upsell = [a["meal_id"] for a in result["addons"]]
         up = result["upgrade"]
         if up and up["status"] == "ok" and up["extra_cost"] > 0:
@@ -235,27 +229,10 @@ class RecommendationPipeline:
 # --------------------------------------------------------------------------- #
 # Offline: train two tower + warm start LinUCB
 # --------------------------------------------------------------------------- #
-def train_all(db, epochs=25):
-    meals = db.get_meals()
-    orders = db.get_orders()
-
-    # mỗi món trong mỗi đơn của khách = 1 mẫu (user tính từ các đơn TRƯỚC đơn đó)
-    samples = []
-    for q in build_queries(Database.group_by_user(orders), meals):
-        user = to_two_tower_user(q["user"], q["ts"])
-        samples += [(user, m) for m in sorted(q["targets"])]
-    print(f"Two tower: {len(samples)} mẫu từ {len(orders)} đơn")
-    rec = TwoTowerRecommender()
-    rec.fit(samples, meals, epochs=epochs)
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    rec.save(TWO_TOWER_PATH)
-
-    meal_ids = list(meals)
-    model = linUCB(len(meal_ids), N_CONTEXT, alpha=1.0)
-    history = linucb_history(orders, {m: a for a, m in enumerate(meal_ids)})
-    model.warm_start(history)
-    save_linucb(model, meal_ids)
-    print(f"LinUCB: warm start từ {len(history)} đơn. Đã lưu vào {MODEL_DIR}/")
+def train_all(db=None):
+    """Train + đánh giá mọi mô hình gợi ý: logic nằm ở train.py (python train.py)."""
+    import train
+    train.main()
 
 
 if __name__ == "__main__":
