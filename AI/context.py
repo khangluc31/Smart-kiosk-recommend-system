@@ -34,6 +34,7 @@ class context_processing:
         token_indices = []
         span_start = None
         span_end = None
+        
         inputs=self.tokenizer(text,return_offsets_mapping=True, return_tensors="pt")
         offset_mapping=inputs.pop("offset_mapping")[0]
         with torch.no_grad():

@@ -172,8 +172,7 @@ class RecommendationPipeline:
         else:
             source = "linucb"
             x = make_x(now, budget, has_account=user_id is not None)
-            arms, arm_scores = self.linucb.select_arm(np.tile(x, (len(self.meal_ids), 1)),
-                                                      k=len(self.meal_ids))
+            arms, arm_scores = self.linucb.select_arm( len(self.meal_ids), np.tile(x,  (len(self.meal_ids), 1)))
             cand = [self.meal_ids[a] for a in arms]
             scores = [float(s) for s in arm_scores]
 
