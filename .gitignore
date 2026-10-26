@@ -1,0 +1,16 @@
+# React
+node_modules/
+dist/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Database
+*.log
+
+# Secrets
+.env
+.env.*
+!.env.example
